@@ -17,6 +17,7 @@ from classes.BoojPushBullet import BoojPushBullet
 from configs.databases import databases
 from configs.general import general
 from configs.pulldown_set import pulldown_set
+from configs.enterprise_sets import enterprise_sets
 
 ##### CONFIGS #######
 
@@ -75,8 +76,12 @@ class PullDown( object ):
 	def setup_download_specific_tables( self ):
 		if self.args.set:
 			if self.args.set not in pulldown_set:
-				print 'Unknown pulldown set requested: ' % self.args.set
-				sys.exit()
+				custom_script_sets = enterprise_sets().get( self.args.set )
+				if not custom_script_sets:
+					print 'Unknown pulldown set requested: %s' % self.args.set
+					sys.exit()
+				self.downloads = custom_script_sets
+				return
 			for database, tables in pulldown_set[self.args.set].iteritems():
 				if len( tables ) > 0:
 					self.downloads.update( { database : {'tables' : tables } } )
@@ -168,12 +173,6 @@ class PullDown( object ):
 			if verification not in ( 'y', 'yes'):
 				print 'Exiting'
 				sys.exit()
-
-	def get_slave_status( self ):
-		if self.args.debug:
-			print 'DB2 Slave Status x'
-			print 'DB3 Slave Status x'
-			print ' '
 
 	def get_download_size( self, source_or_dest ):
 		if source_or_dest == 'source':
@@ -308,15 +307,24 @@ class PullDown( object ):
 		print '-- Succesffuly imported data to ', db_srv['info']
 
 	def write_download_manifest( self ):
-		print self.download_dir
+		print ' '
+		print 'Download Manifest'
+		message = 'Data Source   : %s\n' % 'the data source'
+		message += 'Data Recieved : %s\n' % 'the data destination'
+		message += 'Downloaded    : \n'
+		for database, info in self.downloads.iteritems():
+			message += ' %s\n' % database
+			for table in info['tables']:
+				message += '   %s\n' % table
+		print message
 
 	def zip_files( self ):
 		print ' '
 		print 'Zipping Files '
-		print pulldown_location
 		cmd =  'tar -cvf %s.tar -C %s .' % ( pulldown_location + '/' + self.dl_package, self.download_dir )
 		subprocess.call( cmd, shell = True )
-		# shutil.rmtree( self.download_dir )
+		shutil.rmtree( self.download_dir )
+		print 'Created the archive: %s' % pulldown_location + '/' + self.dl_package + '.tar'
 
 	def cleanup( self ):
 		"""
@@ -400,9 +408,12 @@ class PullDown( object ):
 		return chosen_database
 
 	def __set_download_dir( self ):
-		for database, info in self.downloads.iteritems():
-			dir_suffix = database + '_' + info['tables'][0]
-			break
+		if self.args.set:
+			dir_suffix = self.args.set
+		else:
+			for database, info in self.downloads.iteritems():
+				dir_suffix = database + '_' + info['tables'][0]
+				break
 		the_dl_package  = script_start_time.strftime("%Y_%m_%d_%H_%M_%S_") + dir_suffix
 		self.dl_package = the_dl_package
 		the_dir  = os.path.join( pulldown_location, the_dl_package )
