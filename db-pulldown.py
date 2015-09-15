@@ -16,6 +16,7 @@ from classes.DriverMysql import DriverMysql
 from classes.BoojPushBullet import BoojPushBullet
 from configs.databases import databases
 from configs.general import general
+from configs.pulldown_set import pulldown_set
 
 ##### CONFIGS #######
 
@@ -47,10 +48,7 @@ class PullDown( object ):
 			print ' '
 
 	def run( self ):
-		if self.args.database:
-			self.setup_download_specific_tables()
-		elif self.args.tables and '.' in self.args.tables:
-			self.setup_download_specific_tables()
+		self.setup_download_specific_tables()
 		self.verify_download( 'source' )
 		self.download_dir     = self.__set_download_dir()
 		print ' '
@@ -75,7 +73,14 @@ class PullDown( object ):
 		Different Download Type Section
 	"""
 	def setup_download_specific_tables( self ):
-		if not self.args.database and '.' in self.args.tables:
+		if self.args.set:
+			if self.args.set not in pulldown_set:
+				print 'Unknown pulldown set requested: ' % self.args.set
+				sys.exit()
+			for database, tables in pulldown_set[self.args.set].iteritems():
+				if len( tables ) > 0:
+					self.downloads.update( { database : {'tables' : tables } } )
+		elif not self.args.database and '.' in self.args.tables:
 			if ' ' in self.args.tables:
 				unfiltered_tables = self.args.tables.split(' ')
 			elif ',' in self.args.tables:
@@ -238,7 +243,7 @@ class PullDown( object ):
 				'pass'       : db_srv['pass'],
 				'dbname'     : database,
 				'tables'     : ' '.join( info['tables'] ),
-				'structure'  :  structure,
+				'structure'  : structure,
 				'phile_name' : phile_name
 			}
 
@@ -308,8 +313,9 @@ class PullDown( object ):
 	def zip_files( self ):
 		print ' '
 		print 'Zipping Files '
+		print pulldown_location
 		cmd =  'tar -cvf %s.tar -C %s .' % ( pulldown_location + '/' + self.dl_package, self.download_dir )
-		# subprocess.call( cmd, shell = True )
+		subprocess.call( cmd, shell = True )
 		# shutil.rmtree( self.download_dir )
 
 	def cleanup( self ):
@@ -418,7 +424,7 @@ def parse_args( args ):
 	parser.add_argument('-v', '--verbosity', action='store_true', default=False, help='Enable verbosity')	
 	parser.add_argument('-d', '--database', default=False, help='Database Schema to pull down')
 	parser.add_argument('-t', '--tables', default=False, help='Tables to pull down')
-	parser.add_argument('-s', '--set', default=False, help='The named set to pull down')
+	parser.add_argument('--set', default=False, help='The named set to pull down')
 	parser.add_argument('-s', '--sourceDB', default=default_source_db, help='Source Database')
 	parser.add_argument('-dt', '--destDB', default=default_dest_db, help='Destination Database')
 	parser.add_argument('-n', '--name', default=False, help='Name the export file')	 #Not being used
@@ -434,4 +440,4 @@ if __name__ == "__main__":
 	args = parse_args( sys.argv )
 	PullDown( args ).run()
 
-# End of File: database-pulldown.v2.py
+# End of File: db-pulldown.py
