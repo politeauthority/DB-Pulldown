@@ -27,7 +27,7 @@ pulldown_location         = general['pulldown_location']
 no_write_databases        = general['no_write_databases']
 use_push_bullet           = general['use_push_bullet']
 use_push_bullet_key       = general['use_push_bullet_key']
-alloted_backup_size       = general['alloted_backup_size']       # Size in Gigs to keep the pull down location under
+alloted_backup_size       = general['alloted_backup_size'] 
 
 
 ##### END CONFIGS ######
@@ -68,7 +68,8 @@ class PullDown( object ):
 		self.notify()
 
 		print ''
-		print 'Finished Download, Backup, Import, and Archiving in : ', str( datetime.datetime.now() - script_start_time )
+		print 'Finished Download, Backup, Import, and Archiving in : %s' % \
+			str( datetime.datetime.now() - script_start_time )
 
 	"""
 		Different Download Type Section
@@ -126,7 +127,10 @@ class PullDown( object ):
 						if table[0][-5:] != '_view':
 							tables.append( table[0] ) 
 				if self.args.verbosity:
-					print 'Downloading from schema "%s" tables %s' % ( database, ','.join( tables ) )
+					print 'Downloading from schema "%s" tables %s' % ( 
+						database, 
+						','.join( tables ) 
+					)
 				self.downloads.update( { database : { 'tables' : tables } } )
 
 	def verify_download( self, source_or_dest ):
@@ -139,7 +143,6 @@ class PullDown( object ):
 		print 'Source Database:      ', self.source_db['info']
 		print 'Destination Database: ', self.dest_db['info']
 		print ' '
-		self.get_slave_status()
 		print 'Downloads '
 		for database, info in self.downloads.iteritems():
 			qry = "SHOW TABLES IN `%s`; " % database
@@ -234,7 +237,10 @@ class PullDown( object ):
 			if self.args.structure:
 				structure = '-d'
 
-			phile_name = os.path.join( self.download_dir, '%s.%s_%s.sql' % ( prefix, database, '_'.join( info['tables'] )[:30] )   )
+			phile_name = os.path.join( self.download_dir, '%s.%s_%s.sql' % ( 
+				prefix, database, 
+				'_'.join( info['tables'] )[:30] )
+			)
 			cmd_args   = {
 				'trickle'    : trickle,
 				'host'       : db_srv['host'],
@@ -246,7 +252,9 @@ class PullDown( object ):
 				'phile_name' : phile_name
 			}
 
-			SqlDumpCmd = '%(trickle)smysqldump -h%(host)s -u%(user)s -p%(pass)s -v --routines %(dbname)s %(tables)s %(structure)s > %(phile_name)s' % cmd_args
+			SqlDumpCmd =  '%(trickle)smysqldump -h%(host)s -u%(user)s -p%(pass)s'
+			SqlDumpCmd += ' -v --routines %(dbname)s %(tables)s %(structure)s > %(phile_name)s'
+			SqlDumpCmd = SqlDumpCmd % cmd_args
 			if self.args.debug:
 				print SqlDumpCmd
 			subprocess.call( SqlDumpCmd, shell = True )
@@ -298,7 +306,8 @@ class PullDown( object ):
 					'dbname'     : phile['database'],
 					'phile_name' : phile['phile_name'],
 				}
-				cmd = "mysql -h%(host)s -u%(user)s -p%(pass)s %(dbname)s < %(phile_name)s " % cmd_args
+				cmd = "mysql -h%(host)s -u%(user)s -p%(pass)s %(dbname)s < %(phile_name)s "
+				cmd = cmd % cmd_args
 				try:
 					subprocess.call( cmd, shell = True )
 				except Exception:
@@ -321,7 +330,9 @@ class PullDown( object ):
 	def zip_files( self ):
 		print ' '
 		print 'Zipping Files '
-		cmd =  'tar -cvf %s.tar -C %s .' % ( pulldown_location + '/' + self.dl_package, self.download_dir )
+		cmd =  'tar -cvf %s.tar -C %s .' % ( 
+			pulldown_location + '/' + self.dl_package, 
+			self.download_dir )
 		subprocess.call( cmd, shell = True )
 		shutil.rmtree( self.download_dir )
 		print 'Created the archive: %s' % pulldown_location + '/' + self.dl_package + '.tar'
@@ -339,7 +350,9 @@ class PullDown( object ):
 			philes.sort()
 			print ' '
 			print 'Running Cleanup'
-			print '  Using %s of %s GIGs of backup space' % ( str( backup_size ), str( alloted_backup_size ) )
+			print '  Using %s of %s GIGs of backup space' % ( 
+				str( backup_size ), 
+				str( alloted_backup_size ) )
 			if delete_backups_x_days_old and ( backup_size > alloted_backup_size ):
 				marked_for_deletion = []
 				print '  %s Backup Files' % str( len( philes ) )
@@ -432,18 +445,72 @@ class PullDown( object ):
 
 def parse_args( args ):
 	parser = ArgumentParser(description='')
-	parser.add_argument('-v', '--verbosity', action='store_true', default=False, help='Enable verbosity')	
-	parser.add_argument('-d', '--database', default=False, help='Database Schema to pull down')
-	parser.add_argument('-t', '--tables', default=False, help='Tables to pull down')
-	parser.add_argument('--set', default=False, help='The named set to pull down')
-	parser.add_argument('-s', '--sourceDB', default=default_source_db, help='Source Database')
-	parser.add_argument('-dt', '--destDB', default=default_dest_db, help='Destination Database')
-	parser.add_argument('-n', '--name', default=False, help='Name the export file')	 #Not being used
-	parser.add_argument('--no_backup', action='store_true', default=False, help='Disable backup of DB your importing to')
-	parser.add_argument('--structure', action='store_true', default=False, help='Only pulldown database table strucutres, not data')
-	parser.add_argument('--skip_notify', action='store_true', default=False, help='Skip sending notifications')
-	parser.add_argument('-sv', '--skip_verify', action='store_true', default=False, help='Skip human verification of download')
-	parser.add_argument('--debug', action='store_true', default=False, help='Enable the Debugger!')	
+	parser.add_argument(
+		'-v', '--verbosity', 
+		action='store_true', 
+		default=False, 
+		help='Enable verbosity'
+	)
+	parser.add_argument(
+		'-d', '--database',
+		default=False, 
+		help='Database Schema to pull down'
+	)
+	parser.add_argument(
+		'-t', '--tables', 
+		default=False, 
+		help='Tables to pull down'
+	)
+	parser.add_argument(
+		'--set', 
+		default=False, 
+		help='The named set to pull down'
+	)
+	parser.add_argument(
+		'-s', '--sourceDB', 
+		default=default_source_db, 
+		help='Source Database'
+	)
+	parser.add_argument(
+		'-dt', '--destDB', 
+		default=default_dest_db, 
+		help='Destination Database'
+	)
+	parser.add_argument( #Not being used
+		'-n', '--name',
+		default=False, 
+		help='Name the export file'
+	)
+	parser.add_argument(
+		'--no_backup',
+		action='store_true',
+		default=False,
+		help='Disable backup of DB your importing to'
+	)
+	parser.add_argument(
+		'--structure',
+		action='store_true',
+		default=False,
+		help='Only pulldown database table strucutres, not data'
+	)
+	parser.add_argument(
+		'--skip_notify',
+		action='store_true',
+		default=False,
+		help='Skip sending notifications'
+	)
+	parser.add_argument(
+		'-sv', '--skip_verify', 
+		action='store_true',
+		default=False,
+		help='Skip human verification of download'
+	)
+	parser.add_argument(
+		'--debug',
+		action='store_true',
+		default=False,
+		help='Enable the Debugger!'
+	)
 	args   = parser.parse_args()
 	return args
 
