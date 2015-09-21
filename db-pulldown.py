@@ -120,7 +120,6 @@ class PullDown( object ):
 				else:
 					qry = """SHOW TABLES IN %s;""" % database
 					db  = DriverMysql( self.source_db )
-					print qry
 					result = db.execute( qry )
 					tables = []
 					for table in result:
@@ -424,9 +423,13 @@ class PullDown( object ):
 		if self.args.set:
 			dir_suffix = self.args.set
 		else:
-			for database, info in self.downloads.iteritems():
-				dir_suffix = database + '_' + info['tables'][0]
-				break
+			print self.args.tables
+			if self.args.database and not self.args.tables:
+				dir_suffix = self.args.database
+			else:
+				for database, info in self.downloads.iteritems():
+					dir_suffix = database + '_' + info['tables'][0]
+					break
 		the_dl_package  = script_start_time.strftime("%Y_%m_%d_%H_%M_%S_") + dir_suffix
 		self.dl_package = the_dl_package
 		the_dir  = os.path.join( pulldown_location, the_dl_package )
