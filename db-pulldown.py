@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import datetime
 from argparse import ArgumentParser
+import _mysql_exceptions
 from classes.DriverMysql import DriverMysql
 from classes.BoojPushBullet import BoojPushBullet
 from configs.databases import databases
@@ -59,16 +60,18 @@ class PullDown( object ):
 			print ' '
 			print 'Starting Backup of %s' % self.dest_db['info']
 			self.download_data( 'dest' )
-		if self.dest_db:
+
+		if self.dest_db and not self.args.name:
 			self.import_data()
 
+		self.post_sql_on_import()
 		self.write_download_manifest()
 		self.zip_files()
 		self.cleanup()
 		self.notify()
 
 		print ''
-		print 'Finished Download, Backup, Import, and Archiving in : %s' % \
+		print 'Finished Download, Backup, Import, and Archiving in %s' % \
 			str( datetime.datetime.now() - script_start_time )
 
 	"""
@@ -314,6 +317,18 @@ class PullDown( object ):
 					sys.exit()
 		print '-- Succesffuly imported data to ', db_srv['info']
 
+	def post_sql_on_import( self ):
+		if self.args.postsql:
+			db_srv = self.dest_db
+			db_x = DriverMysql( self.dest_db )
+			print ''
+			print 'Running Post SQL'
+			print '  %s' % self.args.postsql
+			try:
+				db_x.execute( self.args.postsql )
+			except _mysql_exceptions.ProgrammingError:
+				print 'Error With Post SQL'
+
 	def write_download_manifest( self ):
 		print ' '
 		print 'Download Manifest'
@@ -341,7 +356,6 @@ class PullDown( object ):
 			Remove files if we're over our allotted limit
 		"""		
 		run_cleanup = False
-
 		backup_size = self.__get_size( pulldown_location )
 		modified_backup_size = backup_size
 		if run_cleanup:
@@ -479,6 +493,11 @@ def parse_args( args ):
 		default=default_dest_db, 
 		help='Destination Database'
 	)
+	parser.add_argument(
+		'-ps', '--postsql', 
+		default=None, 
+		help='SQL statement to run on imported database dump'
+	)	
 	parser.add_argument( #Not being used
 		'-n', '--name',
 		default=False, 
